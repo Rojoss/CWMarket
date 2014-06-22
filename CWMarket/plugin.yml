@@ -1,0 +1,5 @@
+name: CWMarket
+main: com.clashwars.cwmarket.bukkit.CWMarketPlugin
+version: '1.0'
+author: ClashWars
+description: ClashWars Market/Trading plugin
