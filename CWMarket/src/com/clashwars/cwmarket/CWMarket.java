@@ -23,7 +23,6 @@ public class CWMarket {
 
 	private Config cfg;
 	private PluginConfig pluginConfig;
-	private Trader trader;
 
 	
 
@@ -52,8 +51,6 @@ public class CWMarket {
 
 		PluginManager pm = getPlugin().getServer().getPluginManager();
 		registerEvents(pm);
-		
-		trader = new Trader(this);
 
 		log("Enabled.");
 	}
@@ -72,9 +69,5 @@ public class CWMarket {
 	
 	public Config getConfig() {
 		return cfg;
-	}
-	
-	public Trader getTrader() {
-		return trader;
 	}
 }

@@ -119,8 +119,6 @@ public class ItemMenu implements Listener {
 						|| inv.getMaxStackSize() != menu.getUUID()) {
 					continue;
 				}
-				
-				Bukkit.broadcastMessage("Click item menu!");
 
 				int raw = event.getRawSlot();
 				boolean top = raw <= menu.getSize();

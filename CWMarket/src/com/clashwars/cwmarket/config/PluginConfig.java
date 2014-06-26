@@ -40,9 +40,7 @@ public class PluginConfig extends Config {
 			String database = cu.getString("sql.database", "clashwar_main");
 			cfg.setSqlInfo(new SqlInfo(address, port, username, password, database));
 			
-			// Trading
-			cfg.setTradeSize(cu.getInt("trading.InvSize", 27));
-			//data.setTradeSize = cu.getBoolean("general.trading.InvSize", true);
+			
 
 			cfgFile.save(file);
 
