@@ -2,4 +2,10 @@ name: CWMarket
 main: com.clashwars.cwmarket.bukkit.CWMarketPlugin
 version: '1.0'
 author: ClashWars
-description: ClashWars Market/Trading plugin
+description: ClashWars Market plugin
+depend: [Vault]
+commands:
+  market:
+    description: Main command
+    usage: /<command>
+    aliases: [ma, shop]

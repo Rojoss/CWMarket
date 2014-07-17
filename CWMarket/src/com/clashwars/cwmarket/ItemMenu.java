@@ -1,105 +1,165 @@
 package com.clashwars.cwmarket;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event.Result;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryType.SlotType;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 
 public class ItemMenu implements Listener {
-	private String					customName;
-	private int						size;
-	private String					title;
-	private Entry[]					entries;
-	private Map<String, Long>		cooldowns		= new HashMap<String, Long>();
+	private String					name; /* Menu name used to identify the menu */
+	private int 					id; /* Used to set maxStackSize to identify the menu */
+	private int						typeID; /* A custom ID which can be used to identify a menu */
+	private String					data; /* Extra data */
+	private String					data2; /* Extra data */
+	private int						page; /* Page data */
+	private int						size; /* Inventory size */
+	private String					title; /* Inventory title */
+	private ItemStack[]				items; /* List of menu items */
 
-	private Set<Inventory>			openInventories	= new HashSet<Inventory>();
+	private Set<Inventory>			openInventories	= new HashSet<Inventory>(); /* List of inventories with this menu */
+	
 
-	private final int				UUID;
-	static Set<ItemMenu>	menus			= new HashSet<ItemMenu>();
+	static Set<ItemMenu>			menus = new HashSet<ItemMenu>(); /* Static list with all menus. */
 
-	public ItemMenu(String customName, int size, String title) {
-		this.customName = customName;
+	//Create a new menu.
+	public ItemMenu(String name, int size, String title) {
+		this.name = name;
 		this.size = size;
 		this.title = title;
-		this.entries = new Entry[size];
-		this.UUID = new Random().nextInt(Integer.MAX_VALUE);
-
+		this.items = new ItemStack[size];
+		
+		this.id = new Random().nextInt(Integer.MAX_VALUE - 64) + 64;
+		
 		menus.add(this);
 	}
 
-	public String getCustomName() {
-		return customName;
+	//Get the menu name.
+	public String getName() {
+		return name;
 	}
 
-	public void setCustomName(String customName) {
-		this.customName = customName;
+	//Set the menu name.
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	//get the unique id
+	public int getID() {
+		return id;
+	}
+	
+	//Get custom data.
+	public String getData() {
+		return data;
 	}
 
+	//Set extra menu data.
+	public void setData(String data) {
+		this.data = data;
+	}
+	
+	//Get custom data.
+	public String getData2() {
+		return data2;
+	}
+
+	//Set extra menu data.
+	public void setData2(String data2) {
+		this.data2 = data2;
+	}
+	
+	//Get the page number.
+	public int getPage() {
+		return page;
+	}
+
+	//Set the page number.
+	public void setPage(int page) {
+		this.page = page;
+	}
+	
+	//Set the type ID.
+	//This is only used if you want to identify a menu with the specified ID if a name is not enough.
+	public void setTypeID(int typeID) {
+		this.typeID = typeID;
+	}
+	
+	//Get the type ID.
+	public int getTypeID() {
+		return typeID;
+	}
+
+	//Get the inventory size.
 	public int getSize() {
 		return size;
 	}
 
+	//Set the inventory size.
 	public void setSize(int size) {
 		this.size = size;
 	}
 
+	//Get the inventory title.
 	public String getTitle() {
 		return title;
 	}
 
+	//Set the inventory title.
 	public void setTitle(String title) {
 		this.title = title;
 	}
 
-	public int getUUID() {
-		return UUID;
+	//Get a list with all menu items.
+	public ItemStack[] getItems() {
+		return items;
 	}
 
-	public Entry[] getEntries() {
-		return entries;
-	}
-
-	public Map<String, Long> getCooldowns() {
-		return cooldowns;
-	}
-
+	//Get a list with all inventory's that have this menu.
 	public Set<Inventory> getOpenInventories() {
 		return openInventories;
 	}
 
-	public void setSlot(Entry entry, int slot) {
-		this.entries[slot] = entry;
+	//Set a menuitem at the specified slot.
+	//Specify a player to only update the given item for the given player.
+	//Player specific have to be set after showing the inventory.
+	public void setSlot(ItemStack item, int slot, Player player) {
+		this.items[slot] = item;
 
 		for (Inventory inv : openInventories) {
-			inv.setItem(slot, entry.getItem());
+			if (player == null) {
+				inv.setItem(slot, item);
+			} else {
+				if (inv.getViewers().contains(player)) {
+					inv.setItem(slot, item);
+				}
+			}
 		}
 	}
 
-	public void setSlot(ItemStack stack, int cooldown, String executionScript, int slot) {
-		setSlot(new Entry(stack, cooldown, executionScript), slot);
-	}
-
+	//Show the menu to a player.
 	public void show(Player player) {
 		player.closeInventory();
 
 		Inventory inv = Bukkit.createInventory(player, size, title);
-		inv.setMaxStackSize(UUID);
+		inv.setMaxStackSize(id);
 
-		for (int i = 0; i < entries.length; i++) {
-			if (entries[i] != null) {
-				inv.setItem(i, entries[i].getItem());
+		for (int i = 0; i < items.length; i++) {
+			if (items[i] != null) {
+				inv.setItem(i, items[i]);
 			}
 		}
 
@@ -107,56 +167,34 @@ public class ItemMenu implements Listener {
 		openInventories.add(inv);
 	}
 
+	
+	//Listen for inventory actions.
 	public static class Events implements Listener {
-		@SuppressWarnings("deprecation")
+		
+		//Click Event.
 		@EventHandler(priority = EventPriority.HIGHEST)
 		public void click(InventoryClickEvent event) {
+			//Since ItemMenuClickEvent extends InventoryclickEvent need to make sure it's not the custom event.
+			if (event instanceof ItemMenuClickEvent) {
+				return;
+			}
+			
 			Player player = (Player) event.getWhoClicked();
 			Inventory inv = event.getInventory();
-
+			
+			//Loop through all menus.
 			for (ItemMenu menu : menus) {
-				if (!inv.getTitle().equals(menu.getTitle()) || inv.getSize() != menu.getSize() || !inv.getHolder().equals(player)
-						|| inv.getMaxStackSize() != menu.getUUID()) {
+				//Check if the clicked inventory is the current menu.
+				if (!inv.getTitle().equals(menu.getTitle()) || inv.getSize() != menu.getSize() || !inv.getHolder().equals(player) || inv.getMaxStackSize() != menu.getID()) {
 					continue;
 				}
-
-				int raw = event.getRawSlot();
-				boolean top = raw <= menu.getSize();
-
-				if (top) {
-					ItemStack current = event.getCurrentItem();
-
-					if (current == null || current.getTypeId() == 0) {
-						return;
-					}
-
-					for (int i = 0; i < menu.getEntries().length; i++) {
-						Entry entry = menu.getEntries()[i];
-
-						if (entry != null && i == raw) {
-							if (entry.getCooldown() <= -1 || !menu.getCooldowns().containsKey(player.getName())
-									|| menu.getCooldowns().get(player.getName()) + entry.getCooldown() < System.currentTimeMillis()) {
-								if (entry.getExecutionScript() != null && !entry.getExecutionScript().trim().isEmpty()) {
-									Bukkit.dispatchCommand(Bukkit.getConsoleSender(), entry.getExecutionScript().replace("%PLAYER%", player.getName()));
-								}
-
-								if (entry.getCooldown() > -1) {
-									menu.getCooldowns().put(player.getName(), System.currentTimeMillis());
-								}
-							}
-
-							event.setCancelled(true);
-							event.setResult(Result.DENY);
-							event.setCursor(null);
-							player.updateInventory();
-							return;
-						}
-					}
-				} else {
+				
+				//Call custom ItemMenuclickEvent
+				ItemMenuClickEvent e = new ItemMenuClickEvent(event.getView(), event.getSlotType(), event.getRawSlot(), event.getClick(), event.getAction(), menu);
+				Bukkit.getServer().getPluginManager().callEvent(e);
+				
+				if (e.isCancelled()) {
 					event.setCancelled(true);
-					event.setResult(Result.DENY);
-					event.setCursor(null);
-					player.updateInventory();
 				}
 			}
 		}
@@ -167,8 +205,7 @@ public class ItemMenu implements Listener {
 			Inventory inv = event.getInventory();
 
 			for (ItemMenu menu : menus) {
-				if (!inv.getTitle().equals(menu.getTitle()) || inv.getSize() != menu.getSize() || !inv.getHolder().equals(player)
-						|| inv.getMaxStackSize() != menu.getUUID()) {
+				if (!inv.getTitle().equals(menu.getTitle()) || inv.getSize() != menu.getSize() || !inv.getHolder().equals(player)) {
 					continue;
 				}
 
@@ -176,43 +213,31 @@ public class ItemMenu implements Listener {
 			}
 		}
 	}
-
-	public class Entry {
-		private ItemStack	item;
-		private int			cooldown;
-		private String		executionScript;
-
-		public Entry(ItemStack item, int cooldown, String executionScript) {
-			this.item = item;
-			this.cooldown = cooldown;
-			this.executionScript = executionScript;
-		}
-
-		public ItemStack getItem() {
-			return item;
-		}
-
-		public void setItem(ItemStack item) {
-			this.item = item;
-		}
-
-		public int getCooldown() {
-			return cooldown;
-		}
-
-		public void setCooldown(int cooldown) {
-			this.cooldown = cooldown;
-		}
-
-		public String getExecutionScript() {
-			return executionScript;
-		}
-
-		public void setExecutionScript(String executionScript) {
-			this.executionScript = executionScript;
-		}
+	
+	//Custom ItemMenuClickEvent.
+	public static class ItemMenuClickEvent extends InventoryClickEvent implements Cancellable {
+		private boolean cancelled;
+		private ItemMenu menu;
+		
+	    public ItemMenuClickEvent(InventoryView view, SlotType type, int slot, ClickType click, InventoryAction action, ItemMenu menu) {
+	    	super(view, type, slot, click, action);
+	    	this.menu = menu;
+	    }
+	    
+	    public ItemMenu getItemMenu() {
+	    	return menu;
+	    }
+	    
+	    public boolean isCancelled() {
+	        return cancelled;
+	    }
+	 
+	    public void setCancelled(boolean cancel) {
+	        cancelled = cancel;
+	    }
 	}
 
+	//Get a list with all item menus.
 	public static Set<ItemMenu> getMenus() {
 		return menus;
 	}
