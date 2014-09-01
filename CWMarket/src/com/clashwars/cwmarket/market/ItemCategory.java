@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -50,15 +52,37 @@ public class ItemCategory extends ItemStack {
 	}
 	
 	public void loadItems() {
+		
 		//Items database
 		// 0:ID 1:Market 2:ItemCategory 3:Owner 4:Price 5:Infinite 6:ItemStack
 		try {
 			Statement statement = cwm.getSql().createStatement();
-			ResultSet res = statement.executeQuery("SELECT * FROM Items WHERE Market='" + market.getName() + "' AND ItemCategory='" + name + "';");
+			ResultSet res = statement.executeQuery("SELECT * FROM " + cwm.marketItemsTable + " WHERE Market='" + market.getName() + "' AND ItemCategory='" + name + "';");
 			TreeMap<Integer, ItemEntry> tempItems = new TreeMap<Integer, ItemEntry>();
 			while (res.next()) {
 				int id = res.getInt("ID");
-				ItemEntry item = new ItemEntry(ItemUtils.deserializeItemStack(res.getString("ItemStack")), market, this, id, UUID.fromString(res.getString("Owner")), res.getInt("Price"), res.getString("Infinite"));
+				ItemStack itemStack = ItemUtils.deserializeItemStack(res.getString("ItemStack"));
+				int amount = res.getInt("Amount");
+							/*
+							//convert old data to new data.
+							//TODO: remove this after first load.
+							amount = itemStack.getAmount();
+							int p = res.getInt("Price");
+							float newPrice = (float) p / amount;
+							
+							try {
+								Statement statement2 = cwm.getSql().createStatement();
+								statement2.executeUpdate("UPDATE " + cwm.marketItemsTable + " SET Amount=" + amount + ", Price=" + newPrice + " WHERE ID=" + id + ";");
+								Bukkit.broadcastMessage("Converted " + id + ". Prev: " + p + " new: " + newPrice + " amt: " + amount);
+							} catch (SQLException e) {
+								Bukkit.broadcastMessage(ChatColor.RED + "Failed converting " + id + ". Prev: " + p + " new: " + newPrice + " amt: " + amount);
+								e.printStackTrace();
+								return;
+							}
+							ItemEntry item = new ItemEntry(itemStack, market, this, id, UUID.fromString(res.getString("Owner")), newPrice, amount, res.getString("Infinite"));
+							//End of convertion
+							*/
+				ItemEntry item = new ItemEntry(itemStack, market, this, id, UUID.fromString(res.getString("Owner")), res.getFloat("Price"), amount, res.getString("Infinite"));
 				tempItems.put(id, item);
 			}
 			setItems(tempItems);
@@ -97,14 +121,13 @@ public class ItemCategory extends ItemStack {
 		int slot = 9;
 		boolean lastItem = false;
 		
-		//ArrayList<Integer> keys = new ArrayList<Integer>(items.keySet());
+		ArrayList<Integer> keys = new ArrayList<Integer>(items.keySet());
         
-		
-		//for(int i=keys.size()-1; i>=0;i--) {
-		for (int itemID : items.keySet()) {
+		int added = 0;
+		for(int i=keys.size()-1; i>=0;i--) {
 			lastItem = false;
 			ItemMenu marketMenu = marketMenus.get(page);
-			ItemEntry itemEntry = items.get(itemID);
+			ItemEntry itemEntry = items.get(keys.get(i));
 			if (itemEntry == null || itemEntry.getItemStack() == null) {
 				continue;
 			}
@@ -114,6 +137,10 @@ public class ItemCategory extends ItemStack {
 			}
 
 			ItemStack entryItem = itemEntry.getItemStack().clone();
+			entryItem.setAmount(64);
+			if (itemEntry.getAmount() < 64) {
+				entryItem.setAmount(itemEntry.getAmount());
+			}
 			
 			//Change meta to add information about item like seller and price etc.
 			ItemMeta meta = entryItem.getItemMeta();
@@ -122,19 +149,22 @@ public class ItemCategory extends ItemStack {
 				lore = new ArrayList<String>();
 			}
 			lore.add(0, Utils.integrateColor("&0&o" + itemEntry.getID()));
-			lore.add(1, Utils.integrateColor("&6&lPrice: &e" + itemEntry.getPrice() + " coins"));
+			lore.add(1, Utils.integrateColor("&9&lAmount: &3" + itemEntry.getAmount()));
+			lore.add(2, Utils.integrateColor("&6&lPrice: &e" + (float)itemEntry.getPricePerItem() * itemEntry.getAmount() + " coins"));
+			lore.add(3, Utils.integrateColor("&6&lPrice per piece: &e" + itemEntry.getPricePerItem() + " coins"));
 			if (itemEntry.isInf()) {
-				lore.add(2, Utils.integrateColor("&8&lSeller: &7Server &8[&aInfinite stock&8]"));
+				lore.add(4, Utils.integrateColor("&8&lSeller: &7Server &8[&aInfinite stock&8]"));
 			} else {
-				lore.add(2, Utils.integrateColor("&8&lSeller: &7" + cwm.getServer().getOfflinePlayer(itemEntry.getOwner()).getName()));
+				lore.add(4, Utils.integrateColor("&8&lSeller: &7" + cwm.getServer().getOfflinePlayer(itemEntry.getOwner()).getName()));
 			}
 			
-			if (lore.size() > 3) {
-				lore.add(3, Utils.integrateColor("&d&lItem lore:"));
+			if (lore.size() > 5) {
+				lore.add(5, Utils.integrateColor("&d&lItem lore:"));
 			}
 			meta.setLore(lore);
 			entryItem.setItemMeta(meta);
 			marketMenu.setSlot(entryItem, slot, null);
+			added++;
 			if (slot < 52) {
 				slot++;
 			} else {
@@ -148,6 +178,10 @@ public class ItemCategory extends ItemStack {
 				marketMenus.get(page).setSlot(new ItemStack(Material.AIR), i, null);
 			}
 		}
+		if (added <= 0) {
+			ItemStack item = ItemUtils.getItem(Material.REDSTONE_BLOCK, 1, (short)1, "&4&lNo items available!", new String[] {"&cThere are currently no " + name + " &cavailable.", "&cWait for a player to sell items."});
+			marketMenus.get(0).setSlot(item, 9, null);
+		}
 	}
 	
 	//Set default buttons for the menu like information etc.
@@ -160,7 +194,7 @@ public class ItemCategory extends ItemStack {
 		item = ItemUtils.getItem(Material.LADDER, 1, (short)0, "&7Next page", new String[] {"&8Switch to the next page."});
 		menu.setSlot(item, 53, null);
 		
-		item = ItemUtils.getItem(Material.BOOK, 1, (short)0, "&5&lInformation", new String[] {"&7Find a item you like to buy", "&7and left click it to start the transaction."});
+		item = ItemUtils.getItem(Material.BOOK, 1, (short)0, "&5&lInformation", new String[] {"&7Find a item you like to buy", "&7and left click it to start the transaction.", "&7Or sell your own " + name, "&7by clicking on it in your inventory."});
 		menu.setSlot(item, 1, null);
 		
 		item = ItemUtils.getItem(175, 1, (short)0, "&6&lBalance: &e&l0 coins", new String[] {"&7The amount of coins you have."});

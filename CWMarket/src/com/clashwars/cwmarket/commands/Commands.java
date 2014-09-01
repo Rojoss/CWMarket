@@ -1,6 +1,9 @@
 package com.clashwars.cwmarket.commands;
 
 import java.lang.reflect.Method;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -9,6 +12,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import com.clashwars.cwmarket.CWMarket;
+import com.clashwars.cwmarket.market.BuySession;
+import com.clashwars.cwmarket.market.ItemCategory;
+import com.clashwars.cwmarket.market.ItemEntry;
 import com.clashwars.cwmarket.market.Market;
 import com.clashwars.cwmarket.util.Utils;
 
@@ -27,9 +33,10 @@ public class Commands {
 		
 		if (args.length < 1) {
 			sender.sendMessage(Utils.integrateColor("&8&l===== &4&lCommand help for &6&l/" + label + " &8&l====="));
-			sender.sendMessage(Utils.integrateColor("&6/" + label + " reload &7- &8Reload config."));
 			sender.sendMessage(Utils.integrateColor("&6/" + label + " open <market> [player] &7- &8Open a market."));
+			sender.sendMessage(Utils.integrateColor("&6/" + label + " buy <ID> &7- &8Start a buy session for the specified item."));
 			sender.sendMessage(Utils.integrateColor("&6/" + label + " infinite &7- &8Toggle infinite mode on/off."));
+			sender.sendMessage(Utils.integrateColor("&6/" + label + " reload &7- &8Reload config."));
 			return true;
 		}
 		
@@ -109,6 +116,76 @@ public class Commands {
 				sender.sendMessage(Utils.formatMsg("&6Infinite mode toggled &cOFF&6."));
 			}
 			
+			return true;
+		}
+		
+		
+		
+		
+		/* /market buy <ID> */
+		if (args.length >= 1 && args[0].equalsIgnoreCase("buy")) {
+			
+			//Console check
+			if (!(sender instanceof Player)) {
+				sender.sendMessage(Utils.formatMsg("&cPlayer command only."));
+				return true;
+			}
+			Player player = (Player)sender;
+			uuid = ((Player) sender).getUniqueId();
+			
+			if (args.length < 2) {
+				sender.sendMessage(Utils.formatMsg("&cYou have to specify a itemID"));
+			}
+			
+			int id = 0;
+			try{
+				id = Integer.parseInt(args[1]);
+			} catch (NumberFormatException e) {
+				sender.sendMessage(Utils.formatMsg("&cInvalid ID."));
+				return true;
+			}
+			int foundID = 0;
+			String marketName = "";
+			String itemCategoryName = "";
+			try {
+				Statement statement = cwm.getSql().createStatement();
+				ResultSet res = statement.executeQuery("SELECT * FROM " + cwm.marketItemsTable + " WHERE ID=" + id + ";");
+				res.next();
+				foundID = res.getInt("ID");
+				marketName = res.getString("Market");
+				itemCategoryName = res.getString("ItemCategory");
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			
+			if (foundID <= 0) {
+				sender.sendMessage(Utils.formatMsg("&cThis item is no longer available."));
+				return true;
+			}
+			
+			Market market = cwm.getMarketManager().getMarket(marketName);
+			if (market == null) {
+				sender.sendMessage(Utils.formatMsg("&cCould not properly load the market."));
+				return true;
+			}
+			ItemCategory itemCat = cwm.getMarketManager().getItemCategory(market, Utils.stripAllColour(itemCategoryName));
+			if (itemCat == null) {
+				sender.sendMessage(Utils.formatMsg("&cCould not properly load the item category."));
+				return true;
+			}
+			
+			ItemEntry itemEntry = itemCat.getItem(foundID);
+			if (itemEntry == null) {
+				sender.sendMessage(Utils.formatMsg("&cCould not properly load the item entry."));
+				return true;
+			}
+			
+			if (itemEntry.isReserved()) {
+				sender.sendMessage(Utils.formatMsg("&cThis item is reserved."));
+			}
+			
+			BuySession bs = new BuySession(cwm, player, itemEntry);
+			bs.start();
 			return true;
 		}
 		

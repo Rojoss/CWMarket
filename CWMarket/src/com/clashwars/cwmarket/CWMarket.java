@@ -11,6 +11,8 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -19,11 +21,14 @@ import com.clashwars.cwmarket.bukkit.events.MainEvents;
 import com.clashwars.cwmarket.commands.Commands;
 import com.clashwars.cwmarket.config.Config;
 import com.clashwars.cwmarket.config.PluginConfig;
+import com.clashwars.cwmarket.market.BankSession;
 import com.clashwars.cwmarket.market.BuySession;
+import com.clashwars.cwmarket.market.EditSession;
 import com.clashwars.cwmarket.market.MarketManager;
 import com.clashwars.cwmarket.market.SellSession;
 import com.clashwars.cwmarket.sql.MySql;
 import com.clashwars.cwmarket.sql.SqlInfo;
+import com.clashwars.cwmarket.util.Utils;
 
 public class CWMarket {
 
@@ -43,7 +48,11 @@ public class CWMarket {
 	private MarketManager mm;
 	public HashMap<UUID, SellSession> sellSessions = new HashMap<UUID, SellSession>();
 	public HashMap<UUID, BuySession> buySessions = new HashMap<UUID, BuySession>();
+	public HashMap<UUID, EditSession> editSessions = new HashMap<UUID, EditSession>();
+	public HashMap<UUID, BankSession> bankSessions = new HashMap<UUID, BankSession>();
 	public ArrayList<UUID> infinite = new ArrayList<UUID>();
+	
+	public String marketItemsTable = "Items";
 
 	
 	
@@ -57,6 +66,34 @@ public class CWMarket {
 
 	public void onDisable() {
 		pluginConfig.save();
+		
+		//Stop all sessions.
+		for (SellSession session : sellSessions.values()) {
+			session.getPlayer().sendMessage(Utils.formatMsg("&cYour sell session has been force stopped because the plugin unloaded."));
+			session.stop();
+		}
+		for (BuySession session : buySessions.values()) {
+			session.getPlayer().sendMessage(Utils.formatMsg("&cYour buy session has been force stopped because the plugin unloaded."));
+			session.stop();
+		}
+		for (EditSession session : editSessions.values()) {
+			session.getPlayer().sendMessage(Utils.formatMsg("&cYour edit session has been force stopped because the plugin unloaded."));
+			session.stop();
+		}
+		for (BankSession session : bankSessions.values()) {
+			session.getPlayer().sendMessage(Utils.formatMsg("&cYour bank session has been force stopped because the plugin unloaded."));
+			session.stop();
+		}
+		
+		//Force close all item menus.
+		for (ItemMenu menu : ItemMenu.getMenus()) {
+			for (Inventory inv : menu.getOpenInventories()) {
+				for (HumanEntity viewer : inv.getViewers()) {
+					viewer.closeInventory();
+				}
+			}
+		}
+		
 		log("Disabled.");
 	}
 
@@ -85,6 +122,7 @@ public class CWMarket {
 		mm = new MarketManager(this);
 		mm.populate();
 		mm.createMenus();
+		
 
 		log("Enabled.");
 	}

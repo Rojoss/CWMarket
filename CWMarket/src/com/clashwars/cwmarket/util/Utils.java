@@ -62,5 +62,10 @@ public class Utils {
 		lore = Arrays.asList(split);
 		return lore;
 	}
+
+
+	public static String integrateUnixColor(String name) {
+		return name;
+	}
 	
 }

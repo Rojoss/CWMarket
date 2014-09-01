@@ -12,6 +12,8 @@ import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.craftbukkit.libs.com.google.gson.Gson;
 import org.bukkit.craftbukkit.libs.com.google.gson.reflect.TypeToken;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -76,7 +78,54 @@ public class ItemUtils {
 	}
 	
 	
+	public static int removeItems(Player player, ItemStack item, int amount) {
+		ItemStack itemClone = item.clone();
+		itemClone.setAmount(1);
+		
+		ItemStack invItem;
+		ItemStack invItemClone;
+		for (int i = 0; i < 36; i++) {
+			invItem = player.getInventory().getItem(i);
+			if (invItem == null || invItem.getType() == Material.AIR) {
+				continue;
+			}
+			invItemClone = invItem.clone();
+			invItemClone.setAmount(1);
+			
+			if (invItemClone.equals(itemClone)) {
+				if (amount >= invItem.getAmount()) {
+					player.getInventory().setItem(i, new ItemStack(Material.AIR));
+					amount -= invItem.getAmount();
+				} else {
+					invItem.setAmount(invItem.getAmount() - amount);
+					return 0;
+				}
+			}
+		}
+		return amount;
+	}
 	
+	public static int getItemAmount(Inventory inventory, ItemStack item) {
+		int itemsFound = 0;
+		
+		ItemStack itemClone = item.clone();
+		itemClone.setAmount(1);
+		
+		ItemStack invItemClone;
+		for (ItemStack invItem : inventory.getContents()) {
+			if (invItem == null || invItem.getType() == Material.AIR) {
+				continue;
+			}
+			invItemClone = invItem.clone();
+			invItemClone.setAmount(1);
+			
+			if (invItemClone.equals(itemClone)) {
+				itemsFound += invItem.getAmount();
+			}
+		}
+		return itemsFound;
+	}
+
 	
 	
 	
@@ -110,6 +159,7 @@ public class ItemUtils {
             Integer i = d.intValue();
             itemData.put("amount", i);
         }
+        
 	    
 	    //Try create ItemStack.
 	    ItemStack  item = ItemStack.deserialize(itemData);
@@ -120,7 +170,14 @@ public class ItemUtils {
 	    
 		if (itemData.containsKey("meta")) {
 			Map<String, Object> metaMap = (Map<String, Object>) itemData.get("meta");
-			item.setItemMeta( (ItemMeta) ConfigurationSerialization.deserializeObject(metaMap, ConfigurationSerialization.getClassByAlias("ItemMeta")) );
+			if (metaMap.get("repair-cost") != null) {
+	            Double d = (Double) metaMap.get("repair-cost");
+	            Integer i = d.intValue();
+	            metaMap.put("repair-cost", i);
+	        }
+			
+			item.setItemMeta( (ItemMeta) ConfigurationSerialization.deserializeObject(metaMap, ConfigurationSerialization.getClassByAlias("ItemMeta")));
+			
 			if (metaMap.containsKey("enchants")) {
 				Map<String, Object> enchantsMap = (Map<String, Object>) metaMap.get("enchants");
 				for (String key : enchantsMap.keySet()) {

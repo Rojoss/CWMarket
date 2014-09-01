@@ -12,17 +12,19 @@ public class ItemEntry extends ItemStack {
 	private ItemCategory itemCat;
 	private int id;
 	private UUID owner;
-	private int price;
+	private float pricePerItem;
+	private int amount;
 	private String inf;
 	private boolean reserved;
 
-	public ItemEntry(ItemStack itemStack, Market market, ItemCategory itemCat, int id, UUID owner, int price, String inf) {
+	public ItemEntry(ItemStack itemStack, Market market, ItemCategory itemCat, int id, UUID owner, float pricePerItem, int amount, String inf) {
 		this.setItemStack(itemStack);
 		this.setMarket(market);
 		this.setItemCat(itemCat);
 		this.setID(id);
 		this.setOwner(owner);
-		this.setPrice(price);
+		this.setPricePerItem(pricePerItem);
+		this.setAmount(amount);
 		this.setInf(inf);
 		setReserved(false);
 	}
@@ -72,12 +74,21 @@ public class ItemEntry extends ItemStack {
 	}
 
 	
-	public int getPrice() {
-		return price;
+	public float getPricePerItem() {
+		return pricePerItem;
 	}
 
-	public void setPrice(int price) {
-		this.price = price;
+	public void setPricePerItem(float pricePerItem) {
+		this.pricePerItem = pricePerItem;
+	}
+	
+	
+	public int getAmount() {
+		return amount;
+	}
+
+	public void setAmount(int amount) {
+		this.amount = amount;
 	}
 
 	
@@ -88,6 +99,7 @@ public class ItemEntry extends ItemStack {
 			return false;
 		}
 	}
+	
 
 	public void setInf(String inf) {
 		this.inf = inf;
