@@ -212,10 +212,13 @@ public class SellSession {
 	@SuppressWarnings("deprecation")
 	private String getRawSellMessage(int marketItemID) {
 		float pricePerPiece = (float) price / amount;
-		String itemName = itemStack.getType().toString().replace("_", " ").toLowerCase();
-		if (itemStack.hasItemMeta()) {
+		String itemName = null;
+		if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName()) {
 			itemName = itemStack.getItemMeta().getDisplayName();
 		}
+        if (itemName == null) {
+            itemName = itemStack.getType().toString().toLowerCase().replace("_", " ");
+        }
 		itemName = Utils.integrateUnixColor(itemName);
 		String message = "" +
 		"{" +
